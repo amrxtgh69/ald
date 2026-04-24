@@ -2,35 +2,44 @@ mod parser;
 
 use std::process::Command;
 
-//////////////  
-// ~amrxtgh //
-//////////////
+#[derive(Debug)]
+enum SymbolBind {
+    LOCAL,
+    GLOBAL,
+    WEAK,
+}
 
-enum SymbolBind { LOCAL, GLOBAL, WEAK }
+#[derive(Debug)]
+#[allow(unused)]
 struct SymbolDef {
-    // core identification
     name: String,
     index: u32,
-    // address/value (changes during linking)
     value: u64,
-
-    // Symbol characteristics
     bind: SymbolBind,
-
     is_defined: bool,
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     Command::new("gcc")
         .args(["-c", "tests/test_add.c", "-o", "tests/test_add.o"])
-        .status()
-        .unwrap();
-    
+        .status()?;
+
     Command::new("gcc")
         .args(["-c", "tests/test_main.c", "-o", "tests/test_main.o"])
-        .status()
-        .unwrap();
-    
-    println!("cargo:rerun-if-changed=tests/test_add.c");
-    println!("cargo:rerun-if-changed=tests/test_main.c");
+        .status()?;
+
+    let add_syms = parser::parse_symbols("tests/test_add.o")?;
+    let main_syms = parser::parse_symbols("tests/test_main.o")?;
+
+    println!("=== test_add.o ===");
+    for s in &add_syms {
+        println!("{} {:?}", s.name, s.bind);
+    }
+
+    println!("=== test_main.o ===");
+    for s in &main_syms {
+        println!("{} {:?}", s.name, s.bind);
+    }
+
+    Ok(())
 }
