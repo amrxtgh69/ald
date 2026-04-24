@@ -1,15 +1,15 @@
 use goblin::elf::Elf;
 
+use crate::{SymbolBind, SymbolDef};
 use std::{error::Error, fs};
-use crate::SymbolDef;
 
 fn is_defined(sym: &goblin::elf::Sym) -> bool {
-    sym.st_shndx != goblin::elf::section_header::SHN_UNDEF
+    sym.st_shndx != goblin::elf::section_header::SHN_UNDEF as usize
 }
 pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
     let bytes = fs::read(path).unwrap();
     let elf = Elf::parse(&bytes).unwrap();
-    
+
     let mut symbols = Vec::new();
 
     for (i, sym) in elf.syms.iter().enumerate() {
@@ -17,7 +17,22 @@ pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
             Some(n) => n.to_string(),
             None => continue,
         };
-        let is_defined = is_defined(&sym);
+        let defined = is_defined(&sym);
+
+        let bind = match sym.st_bind() {
+            goblin::elf::sym::STB_LOCAL => SymbolBind::LOCAL,
+            goblin::elf::sym::STB_GLOBAL => SymbolBind::GLOBAL,
+            goblin::elf::sym::STB_WEAK => SymbolBind::WEAK,
+            _ => SymbolBind::LOCAL,
+        };
+        let value = sym.st_value;
+        symbols.push(SymbolDef {
+            name,
+            index: i as u32,
+            value,
+            bind,
+            is_defined: defined,
+        });
     }
     Ok(symbols)
 }
