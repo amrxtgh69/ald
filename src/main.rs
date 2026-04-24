@@ -16,6 +16,8 @@ struct SymbolDef {
 
     // Symbol characteristics
     bind: SymbolBind,
+
+    is_defined: bool,
 }
 
 fn main() {
