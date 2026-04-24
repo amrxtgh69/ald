@@ -20,10 +20,10 @@ pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
         let defined = is_defined(&sym);
 
         let bind = match sym.st_bind() {
-            goblin::elf::sym::STB_LOCAL => SymbolBind::LOCAL,
-            goblin::elf::sym::STB_GLOBAL => SymbolBind::GLOBAL,
-            goblin::elf::sym::STB_WEAK => SymbolBind::WEAK,
-            _ => SymbolBind::LOCAL,
+            goblin::elf::sym::STB_LOCAL => SymbolBind::Local,
+            goblin::elf::sym::STB_GLOBAL => SymbolBind::Global,
+            goblin::elf::sym::STB_WEAK => SymbolBind::Weak,
+            _ => SymbolBind::Local,
         };
         let value = sym.st_value;
         symbols.push(SymbolDef {
