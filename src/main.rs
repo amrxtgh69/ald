@@ -7,7 +7,7 @@ use std::process::Command;
 //////////////
 
 enum SymbolBind { LOCAL, GLOBAL, WEAK }
-struct Symbol {
+struct SymbolDef {
     // core identification
     name: String,
     index: u32,
