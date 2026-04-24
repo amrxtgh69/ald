@@ -1,11 +1,23 @@
-use std::{fs::File, io::Read};
 use goblin::elf::Elf;
 
-use crate::Symbol;
+use std::{error::Error, fs};
+use crate::SymbolDef;
 
-pub fn parse_object_file(path: &str) -> Result<Vec<Symbol>, Box<dyn std::error::Error>>{
-    let mut file_data = Vec::new();
-    File::open(path)?.read_to_end(&mut file_data)?;
+fn is_defined(sym: &goblin::elf::Sym) -> bool {
+    sym.st_shndx != goblin::elf::section_header::SHN_UNDEF
+}
+pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
+    let bytes = fs::read(path).unwrap();
+    let elf = Elf::parse(&bytes).unwrap();
+    
+    let mut symbols = Vec::new();
 
-    let elf = Elf::parse(&file_data);
+    for (i, sym) in elf.syms.iter().enumerate() {
+        let name = match elf.strtab.get_at(sym.st_name) {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+        let is_defined = is_defined(&sym);
+    }
+    Ok(symbols)
 }
