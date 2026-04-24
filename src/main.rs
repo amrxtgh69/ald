@@ -4,9 +4,9 @@ use std::process::Command;
 
 #[derive(Debug)]
 enum SymbolBind {
-    LOCAL,
-    GLOBAL,
-    WEAK,
+    Local,
+    Global,
+    Weak,
 }
 
 #[derive(Debug)]
