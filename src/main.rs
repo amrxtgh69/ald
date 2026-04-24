@@ -1,3 +1,5 @@
+mod parser;
+
 use std::process::Command;
 
 //////////////  
@@ -18,12 +20,12 @@ struct Symbol {
 
 fn main() {
     Command::new("gcc")
-        .args(&["-c", "tests/test_add.c", "-o", "tests/test_add.o"])
+        .args(["-c", "tests/test_add.c", "-o", "tests/test_add.o"])
         .status()
         .unwrap();
     
     Command::new("gcc")
-        .args(&["-c", "tests/test_main.c", "-o", "tests/test_main.o"])
+        .args(["-c", "tests/test_main.c", "-o", "tests/test_main.o"])
         .status()
         .unwrap();
     
