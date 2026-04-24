@@ -11,6 +11,6 @@ fn main() {
         .status()
         .unwrap();
     
-    println!("cargo:rerun-if-changed=test_add.c");
-    println!("cargo:rerun-if-changed=test_main.c");
+    println!("cargo:rerun-if-changed=tests/test_add.c");
+    println!("cargo:rerun-if-changed=tests/test_main.c");
 }
