@@ -2,7 +2,7 @@ mod parser;
 
 use std::process::Command;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum SymbolBind {
     Local,
     Global,
@@ -31,14 +31,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let add_syms = parser::parse_symbols("tests/test_add.o")?;
     let main_syms = parser::parse_symbols("tests/test_main.o")?;
 
-    println!("=== test_add.o ===");
-    for s in &add_syms {
-        println!("{} {:?}", s.name, s.bind);
+    println!("=== ALL SYMBOLS: test_add.o ===");
+    for symb in &add_syms {
+        println!(
+            "{} {:?} is_defined:{}",
+            symb.name, symb.bind, symb.is_defined
+        );
     }
 
-    println!("=== test_main.o ===");
-    for s in &main_syms {
-        println!("{} {:?}", s.name, s.bind);
+    println!("\n=== ALL SYMBOLS: test_main.o ===");
+    for symb in &main_syms {
+        println!(
+            "{} {:?} is_defined:{}",
+            symb.name, symb.bind, symb.is_defined
+        );
+    }
+
+    println!("\n=== test_add.o ===");
+    println!("Local:");
+    for s in parser::get_local_symbols("tests/test_add.o")? {
+        println!("  {} is_defined:{}", s.name, s.is_defined);
+    }
+    println!("Global:");
+    for s in parser::get_global_symbols("tests/test_add.o")? {
+        println!("  {} is_defined:{}", s.name, s.is_defined);
+    }
+    println!("External:");
+    for s in parser::get_external_symbols("tests/test_add.o")? {
+        println!("  {} is_defined:{}", s.name, s.is_defined);
+    }
+
+    println!("\n=== test_main.o ===");
+    println!("Local:");
+    for s in parser::get_local_symbols("tests/test_main.o")? {
+        println!("  {} is_defined:{}", s.name, s.is_defined);
+    }
+    println!("Global:");
+    for s in parser::get_global_symbols("tests/test_main.o")? {
+        println!("  {} is_defined:{}", s.name, s.is_defined);
+    }
+    println!("External:");
+    for s in parser::get_external_symbols("tests/test_main.o")? {
+        println!("  {} is_defined:{}", s.name, s.is_defined);
     }
 
     Ok(())
