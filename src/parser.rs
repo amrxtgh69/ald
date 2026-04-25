@@ -36,3 +36,27 @@ pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
     }
     Ok(symbols)
 }
+
+pub fn get_local_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
+    let symbols = parse_symbols(path)?;
+    Ok(symbols
+        .into_iter()
+        .filter(|s| s.bind == SymbolBind::Local)
+        .collect())
+}
+
+pub fn get_global_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
+    let symbols = parse_symbols(path)?;
+    Ok(symbols
+        .into_iter()
+        .filter(|s| s.bind == SymbolBind::Global && s.is_defined)
+        .collect())
+}
+
+pub fn get_external_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
+    let symbols = parse_symbols(path)?;
+    Ok(symbols
+        .into_iter()
+        .filter(|s| s.bind == SymbolBind::Global && !s.is_defined)
+        .collect())
+}
