@@ -1,11 +1,29 @@
+//! ELF Symbol Parser
+//!
+//! This module provides functionality for parsing symbol tables from ELF relocatable objects.
+
 use goblin::elf::Elf;
 
 use crate::{SymbolBind, SymbolDef};
 use std::{error::Error, fs};
 
+/// Checks if a symbol is defined (has a valid section index).
+///
+/// A symbol is defined if its section index is not SHN_UNDEF.
 fn is_defined(sym: &goblin::elf::Sym) -> bool {
     sym.st_shndx != goblin::elf::section_header::SHN_UNDEF as usize
 }
+
+/// Parses all symbols from an ELF relocatable object file.
+///
+/// # Arguments
+/// * `path` - Path to the ELF relocatable object file
+///
+/// # Returns
+/// A vector of `SymbolDef` containing all parsed symbols
+///
+/// # Errors
+/// Returns an error if the file cannot be read or parsed as ELF
 pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
     let bytes = fs::read(path).unwrap();
     let elf = Elf::parse(&bytes).unwrap();
@@ -37,6 +55,15 @@ pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
     Ok(symbols)
 }
 
+/// Returns only local (STB_LOCAL) symbols from an ELF file.
+///
+/// Local symbols are only visible within the object file that defines them.
+///
+/// # Arguments
+/// * `path` - Path to the ELF relocatable object file
+///
+/// # Returns
+/// A vector of `SymbolDef` containing only local symbols
 pub fn get_local_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
     let symbols = parse_symbols(path)?;
     Ok(symbols
@@ -45,6 +72,16 @@ pub fn get_local_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
         .collect())
 }
 
+/// Returns global (STB_GLOBAL) symbols that are defined in an ELF file.
+///
+/// Global symbols are visible across multiple object files and can be referenced
+/// by other files during linking.
+///
+/// # Arguments
+/// * `path` - Path to the ELF relocatable object file
+///
+/// # Returns
+/// A vector of `SymbolDef` containing only defined global symbols
 pub fn get_global_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
     let symbols = parse_symbols(path)?;
     Ok(symbols
@@ -53,6 +90,16 @@ pub fn get_global_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> 
         .collect())
 }
 
+/// Returns external (undefined) symbols from an ELF file.
+///
+/// These are global symbols that are referenced but not defined in this object file.
+/// They need to be resolved by the linker from other object files.
+///
+/// # Arguments
+/// * `path` - Path to the ELF relocatable object file
+///
+/// # Returns
+/// A vector of `SymbolDef` containing only undefined (external) symbols
 pub fn get_external_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
     let symbols = parse_symbols(path)?;
     Ok(symbols
