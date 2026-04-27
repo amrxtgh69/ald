@@ -2,6 +2,7 @@
 
 extern int add(int a, int b);
 extern int global_var;
+static int local_variable = 5;
 
 int main()
 {
