@@ -1,3 +1,4 @@
+mod elf;
 mod parser;
 
 use std::env;
@@ -28,7 +29,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for path in &args[1..] {
         println!("\n=== {} ===", path);
-        let syms = parser::parse_symbols(path)?;
+        let bytes = std::fs::read(path)?;
+
+        let hdr = parser::parse_elf_header(&bytes)?;
+        println!("ELF Header:");
+        println!(
+            "  class={} endian={} type={:#x} machine={:#x} entry={:#x}",
+            hdr.class, hdr.endian, hdr.file_type, hdr.machine, hdr.entry
+        );
+        println!(
+            "  shoff={} shnum={} shstrndx={}",
+            hdr.shoff, hdr.shnum, hdr.shstrndx
+        );
+
+        let syms = parser::parse_symbols(&bytes)?;
         println!("ALL SYMBOLS:");
         for s in &syms {
             println!(
@@ -38,15 +52,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         println!("Local:");
-        for s in parser::get_local_symbols(path)? {
+        for s in parser::get_local_symbols(&bytes)? {
             println!("  {} is_defined:{}", s.name, s.is_defined);
         }
         println!("Global:");
-        for s in parser::get_global_symbols(path)? {
+        for s in parser::get_global_symbols(&bytes)? {
             println!("  {} is_defined:{}", s.name, s.is_defined);
         }
         println!("External:");
-        for s in parser::get_external_symbols(path)? {
+        for s in parser::get_external_symbols(&bytes)? {
             println!("  {} is_defined:{}", s.name, s.is_defined);
         }
     }
