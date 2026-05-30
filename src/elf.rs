@@ -14,3 +14,14 @@ pub struct ElfHeader {
     pub shstrndx: u16,
     pub shoff: u64,
 }
+#[allow(dead_code)]
+pub struct ElfSection {
+    pub name: String,
+    pub sh_type: u32,
+    pub flags: u64,
+    pub addr: u64,
+    pub offset: u64,
+    pub size: u64,
+    pub addralign: u64,
+    pub data: Vec<u8>,
+}
