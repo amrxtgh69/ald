@@ -63,6 +63,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for s in parser::get_external_symbols(&bytes)? {
             println!("  {} is_defined:{}", s.name, s.is_defined);
         }
+
+        let sections = parser::parse_elf_sections(&bytes)?;
+        println!("SECTIONS:");
+        for s in sections {
+            println!("  {} type={:#x} flags={:#x} addr={:#x} size={} align={}",
+        s.name, s.sh_type, s.flags, s.addr, s.size, s.addralign);
+        }
     }
 
     Ok(())
