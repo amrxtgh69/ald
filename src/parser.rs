@@ -4,8 +4,9 @@
 
 use goblin::elf::Elf;
 
+use crate::elf::ElfHeader;
 use crate::{SymbolBind, SymbolDef};
-use std::{error::Error, fs};
+use std::error::Error;
 
 /// Checks if a symbol is defined (has a valid section index).
 ///
@@ -24,9 +25,8 @@ fn is_defined(sym: &goblin::elf::Sym) -> bool {
 ///
 /// # Errors
 /// Returns an error if the file cannot be read or parsed as ELF
-pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
-    let bytes = fs::read(path).unwrap();
-    let elf = Elf::parse(&bytes).unwrap();
+pub fn parse_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
+    let elf = Elf::parse(bytes).unwrap();
 
     let mut symbols = Vec::new();
 
@@ -64,8 +64,8 @@ pub fn parse_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
 ///
 /// # Returns
 /// A vector of `SymbolDef` containing only local symbols
-pub fn get_local_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
-    let symbols = parse_symbols(path)?;
+pub fn get_local_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
+    let symbols = parse_symbols(bytes)?;
     Ok(symbols
         .into_iter()
         .filter(|s| s.bind == SymbolBind::Local)
@@ -82,8 +82,8 @@ pub fn get_local_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
 ///
 /// # Returns
 /// A vector of `SymbolDef` containing only defined global symbols
-pub fn get_global_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
-    let symbols = parse_symbols(path)?;
+pub fn get_global_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
+    let symbols = parse_symbols(bytes)?;
     Ok(symbols
         .into_iter()
         .filter(|s| s.bind == SymbolBind::Global && s.is_defined)
@@ -100,10 +100,30 @@ pub fn get_global_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> 
 ///
 /// # Returns
 /// A vector of `SymbolDef` containing only undefined (external) symbols
-pub fn get_external_symbols(path: &str) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
-    let symbols = parse_symbols(path)?;
+pub fn get_external_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
+    let symbols = parse_symbols(bytes)?;
     Ok(symbols
         .into_iter()
         .filter(|s| s.bind == SymbolBind::Global && !s.is_defined)
         .collect())
+}
+
+pub fn parse_elf_header(bytes: &[u8]) -> Result<ElfHeader, Box<dyn Error>> {
+    let elf = Elf::parse(bytes)?;
+    let hdr = &elf.header;
+    Ok(ElfHeader {
+        class: hdr.e_ident[4],
+        endian: hdr.e_ident[5],
+        file_type: hdr.e_type,
+        machine: hdr.e_machine,
+        entry: hdr.e_entry,
+        flags: hdr.e_flags,
+        ehsize: hdr.e_ehsize,
+        phentsize: hdr.e_phentsize,
+        phnum: hdr.e_phnum,
+        shentsize: hdr.e_shentsize,
+        shnum: hdr.e_shnum,
+        shstrndx: hdr.e_shstrndx,
+        shoff: hdr.e_shoff,
+    })
 }
