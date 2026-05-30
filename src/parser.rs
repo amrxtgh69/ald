@@ -4,7 +4,7 @@
 
 use goblin::elf::Elf;
 
-use crate::elf::ElfHeader;
+use crate::elf::{ ElfHeader, ElfSection };
 use crate::{SymbolBind, SymbolDef};
 use std::error::Error;
 
@@ -126,4 +126,27 @@ pub fn parse_elf_header(bytes: &[u8]) -> Result<ElfHeader, Box<dyn Error>> {
         shstrndx: hdr.e_shstrndx,
         shoff: hdr.e_shoff,
     })
+}
+pub fn parse_elf_sections(bytes: &[u8]) -> Result<Vec<ElfSection>, Box<dyn Error>> {
+    let elf = Elf::parse(bytes)?;
+    let mut sections = Vec::new();
+
+    for shdr in &elf.section_headers {
+        let name = elf.shdr_strtab.get_at(shdr.sh_name).unwrap_or("").to_string();
+        let start = shdr.sh_offset as usize;
+        let end = start + shdr.sh_size as usize;
+        let data = bytes[start..end].to_vec();
+        sections.push( ElfSection { 
+            name,
+            sh_type: (shdr.sh_type),
+            flags: (shdr.sh_flags),
+            addr: (shdr.sh_addr),
+            offset: (shdr.sh_offset),
+            size: (shdr.sh_size),
+            addralign: (shdr.sh_addr),
+            data,
+        });
+    }
+    Ok(sections)
+
 }
