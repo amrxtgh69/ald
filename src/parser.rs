@@ -1,33 +1,13 @@
-//! ELF Symbol Parser
-//!
-//! This module provides functionality for parsing symbol tables from ELF relocatable objects.
-
 use goblin::elf::Elf;
 
-use crate::elf::{ ElfHeader, ElfSection };
-use crate::{SymbolBind, SymbolDef};
+use crate::elf::{ElfHeader, ElfSection, SymbolBind, SymbolDef};
 use std::error::Error;
 
-/// Checks if a symbol is defined (has a valid section index).
-///
-/// A symbol is defined if its section index is not SHN_UNDEF.
 fn is_defined(sym: &goblin::elf::Sym) -> bool {
     sym.st_shndx != goblin::elf::section_header::SHN_UNDEF as usize
 }
 
-/// Parses all symbols from an ELF relocatable object file.
-///
-/// # Arguments
-/// * `path` - Path to the ELF relocatable object file
-///
-/// # Returns
-/// A vector of `SymbolDef` containing all parsed symbols
-///
-/// # Errors
-/// Returns an error if the file cannot be read or parsed as ELF
-pub fn parse_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
-    let elf = Elf::parse(bytes).unwrap();
-
+pub fn parse_symbols(elf: &Elf<'_>) -> Vec<SymbolDef> {
     let mut symbols = Vec::new();
 
     for (i, sym) in elf.syms.iter().enumerate() {
@@ -52,66 +32,36 @@ pub fn parse_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
             is_defined: defined,
         });
     }
-    Ok(symbols)
+    symbols
 }
 
-/// Returns only local (STB_LOCAL) symbols from an ELF file.
-///
-/// Local symbols are only visible within the object file that defines them.
-///
-/// # Arguments
-/// * `path` - Path to the ELF relocatable object file
-///
-/// # Returns
-/// A vector of `SymbolDef` containing only local symbols
-pub fn get_local_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
-    let symbols = parse_symbols(bytes)?;
-    Ok(symbols
-        .into_iter()
+pub fn get_local_symbols(symbols: &[SymbolDef]) -> Vec<SymbolDef> {
+    symbols
+        .iter()
         .filter(|s| s.bind == SymbolBind::Local)
-        .collect())
+        .cloned()
+        .collect()
 }
 
-/// Returns global (STB_GLOBAL) symbols that are defined in an ELF file.
-///
-/// Global symbols are visible across multiple object files and can be referenced
-/// by other files during linking.
-///
-/// # Arguments
-/// * `path` - Path to the ELF relocatable object file
-///
-/// # Returns
-/// A vector of `SymbolDef` containing only defined global symbols
-pub fn get_global_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
-    let symbols = parse_symbols(bytes)?;
-    Ok(symbols
-        .into_iter()
+pub fn get_global_symbols(symbols: &[SymbolDef]) -> Vec<SymbolDef> {
+    symbols
+        .iter()
         .filter(|s| s.bind == SymbolBind::Global && s.is_defined)
-        .collect())
+        .cloned()
+        .collect()
 }
 
-/// Returns external (undefined) symbols from an ELF file.
-///
-/// These are global symbols that are referenced but not defined in this object file.
-/// They need to be resolved by the linker from other object files.
-///
-/// # Arguments
-/// * `path` - Path to the ELF relocatable object file
-///
-/// # Returns
-/// A vector of `SymbolDef` containing only undefined (external) symbols
-pub fn get_external_symbols(bytes: &[u8]) -> Result<Vec<SymbolDef>, Box<dyn Error>> {
-    let symbols = parse_symbols(bytes)?;
-    Ok(symbols
-        .into_iter()
+pub fn get_external_symbols(symbols: &[SymbolDef]) -> Vec<SymbolDef> {
+    symbols
+        .iter()
         .filter(|s| s.bind == SymbolBind::Global && !s.is_defined)
-        .collect())
+        .cloned()
+        .collect()
 }
 
-pub fn parse_elf_header(bytes: &[u8]) -> Result<ElfHeader, Box<dyn Error>> {
-    let elf = Elf::parse(bytes)?;
+pub fn parse_elf_header(elf: &Elf<'_>) -> ElfHeader {
     let hdr = &elf.header;
-    Ok(ElfHeader {
+    ElfHeader {
         class: hdr.e_ident[4],
         endian: hdr.e_ident[5],
         file_type: hdr.e_type,
@@ -125,28 +75,41 @@ pub fn parse_elf_header(bytes: &[u8]) -> Result<ElfHeader, Box<dyn Error>> {
         shnum: hdr.e_shnum,
         shstrndx: hdr.e_shstrndx,
         shoff: hdr.e_shoff,
-    })
+    }
 }
-pub fn parse_elf_sections(bytes: &[u8]) -> Result<Vec<ElfSection>, Box<dyn Error>> {
-    let elf = Elf::parse(bytes)?;
+
+pub fn parse_elf_sections(elf: &Elf<'_>, bytes: &[u8]) -> Result<Vec<ElfSection>, Box<dyn Error>> {
     let mut sections = Vec::new();
 
     for shdr in &elf.section_headers {
-        let name = elf.shdr_strtab.get_at(shdr.sh_name).unwrap_or("").to_string();
+        let name = elf
+            .shdr_strtab
+            .get_at(shdr.sh_name)
+            .unwrap_or("")
+            .to_string();
         let start = shdr.sh_offset as usize;
         let end = start + shdr.sh_size as usize;
+        if end > bytes.len() {
+            return Err(format!(
+                "section '{}' data at offset {} size {} exceeds file size {}",
+                name,
+                shdr.sh_offset,
+                shdr.sh_size,
+                bytes.len()
+            )
+            .into());
+        }
         let data = bytes[start..end].to_vec();
-        sections.push( ElfSection { 
+        sections.push(ElfSection {
             name,
-            sh_type: (shdr.sh_type),
-            flags: (shdr.sh_flags),
-            addr: (shdr.sh_addr),
-            offset: (shdr.sh_offset),
-            size: (shdr.sh_size),
-            addralign: (shdr.sh_addr),
+            sh_type: shdr.sh_type,
+            flags: shdr.sh_flags,
+            addr: shdr.sh_addr,
+            offset: shdr.sh_offset,
+            size: shdr.sh_size,
+            addralign: shdr.sh_addralign,
             data,
         });
     }
     Ok(sections)
-
 }
