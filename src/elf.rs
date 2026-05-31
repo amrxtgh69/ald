@@ -1,4 +1,5 @@
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct ElfHeader {
     pub class: u8,
     pub endian: u8,
@@ -14,7 +15,9 @@ pub struct ElfHeader {
     pub shstrndx: u16,
     pub shoff: u64,
 }
+
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct ElfSection {
     pub name: String,
     pub sh_type: u32,
@@ -24,4 +27,21 @@ pub struct ElfSection {
     pub size: u64,
     pub addralign: u64,
     pub data: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SymbolBind {
+    Local,
+    Global,
+    Weak,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct SymbolDef {
+    pub name: String,
+    pub index: u32,
+    pub value: u64,
+    pub bind: SymbolBind,
+    pub is_defined: bool,
 }
