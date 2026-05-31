@@ -1,24 +1,8 @@
 mod elf;
 mod parser;
+mod resolve;
 
 use std::env;
-
-#[derive(Debug, PartialEq)]
-enum SymbolBind {
-    Local,
-    Global,
-    Weak,
-}
-
-#[derive(Debug)]
-#[allow(unused)]
-struct SymbolDef {
-    name: String,
-    index: u32,
-    value: u64,
-    bind: SymbolBind,
-    is_defined: bool,
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
@@ -30,8 +14,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for path in &args[1..] {
         println!("\n=== {} ===", path);
         let bytes = std::fs::read(path)?;
+        let elf = goblin::elf::Elf::parse(&bytes)?;
 
-        let hdr = parser::parse_elf_header(&bytes)?;
+        let hdr = parser::parse_elf_header(&elf);
         println!("ELF Header:");
         println!(
             "  class={} endian={} type={:#x} machine={:#x} entry={:#x}",
@@ -42,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             hdr.shoff, hdr.shnum, hdr.shstrndx
         );
 
-        let syms = parser::parse_symbols(&bytes)?;
+        let syms = parser::parse_symbols(&elf);
         println!("ALL SYMBOLS:");
         for s in &syms {
             println!(
@@ -52,23 +37,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         println!("Local:");
-        for s in parser::get_local_symbols(&bytes)? {
+        for s in parser::get_local_symbols(&syms) {
             println!("  {} is_defined:{}", s.name, s.is_defined);
         }
         println!("Global:");
-        for s in parser::get_global_symbols(&bytes)? {
+        for s in parser::get_global_symbols(&syms) {
             println!("  {} is_defined:{}", s.name, s.is_defined);
         }
         println!("External:");
-        for s in parser::get_external_symbols(&bytes)? {
+        for s in parser::get_external_symbols(&syms) {
             println!("  {} is_defined:{}", s.name, s.is_defined);
         }
 
-        let sections = parser::parse_elf_sections(&bytes)?;
+        let sections = parser::parse_elf_sections(&elf, &bytes)?;
         println!("SECTIONS:");
         for s in sections {
-            println!("  {} type={:#x} flags={:#x} addr={:#x} size={} align={}",
-        s.name, s.sh_type, s.flags, s.addr, s.size, s.addralign);
+            println!(
+                "  {} type={:#x} flags={:#x} addr={:#x} size={} align={}",
+                s.name, s.sh_type, s.flags, s.addr, s.size, s.addralign
+            );
         }
     }
 
